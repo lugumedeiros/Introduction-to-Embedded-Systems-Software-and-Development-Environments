@@ -9,7 +9,12 @@
 #
 #*****************************************************************************
 #------------------------------------------------------------------------------
-# <Put a Description Here>
+# This code is supposed to work in the HOST machine and in the 
+# MSP432 microcontroller, but I was not able to make it to the end
+# I don't know if it's my machine, but I got locked in a error
+# and after 1 week trying I gave up. Maybe I have enough good 
+# material here to pass this assigment. First time using makefile
+# or even compiling using flags...
 #
 # Use: make [TARGET] [PLATFORM-OVERRIDES]
 #
@@ -17,62 +22,78 @@
 #      <Put a description of the supported targets here>
 #		<TARGET>.o - Builds .o File
 #		all -		 Builds .o File
+#       build -  	 Same as all
+#		<TARGET>.asm Assembly code
+#		compile-all  Compile but doesn't build
 #		clean - 	 Clean all created files
 #'
 # Platform Overrides:'
 #      <Put a description of the supported Overrides here
-#
+#		PLATFORM=HOST   - Default and not necesssary
+#		PLATFORM=MSP432 - for MSP432  enviroment
 #------------------------------------------------------------------------------
 include sources.mk
 
 # Platform Overrides
-PLATFORM = HOST
+PLATFORM ?= HOST
 
 # Architectures Specific Flags
 CPU = cortex-m4
 ARCH = armv7e-m
 SPECS = nosys.specs
-LINKER_FILE = msp432p401r.lds
-LDFLAGS = -Wl,-Map=$(TARGET).map -T$(LINKER_FILE)
+LDFLAGS = -Wl,-Map=$(TARGET).map 
+LDFLAGS_MSP = -T $(LINKER_FILE)
+MSP_C_FLAGS = -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mthumb
+MSP_ALL_FLAGS = $(MSP_C_FLAGS) -mcpu=$(CPU) -march=$(ARCH) --specs=$(SPECS) $(MSP_C_FLAGS)
 
 # Compiler Flags and Defines
 TARGET = c1m2
-CPPFLAGS = $(INCLUDES)
-LD = -l
-CFLAGS = -Wall -g -O0 -std=c99
-PLAT_TARGET= -DHOST
-OBJECTS = $(SOURCES:.c=.o)
-#Target = executable name
-#CPPFLAGS = Directory path to aux files
-#LD = Linker flag, should'n be necessary at HOST
-#CFLAGS = CFLAGS :)
-#PLAT_TARGET = Flag that defines if HOST or ARM
+CPPFLAGS = -D$(PLATFORM)
+CFLAGS = -Wall -g -O0 -std=c99 -Werror
 
 ifeq ($(PLATFORM), MSP432)
 	CC = arm-none-eabi-gcc
-	SOURCES += startup_msp432p401r_gcc.c system_msp432p401r.c interrupts_msp432p401r_gcc.c
-	LD = arm-none-eabi-ld
-	CFLAGS += -Werror -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mcpu=$(CPU) --specs=$(SPECS) -march=$(ARCH) $(MSP432) $(LDFLAGS)
-	PLAT_TARGET = -DMSP432
-	SOURCES =+ SOURCES_MSP
+	LINKER_FILE = ../msp432p401r.lds
+	CFLAGS += $(MSP_ALL_FLAGS)
+	LDFLAGS = $(LDFLAGS_MSP)
+	SOURCES += $(SOURCES_MSP)
+	OBJECTS += $(SOURCES_MSP:.c=.o)
 else
 	CC = gcc
 endif
 
+OBJECTS = $(SOURCES:.c=.o)
+DEPS = $(OBJECTS:.o=.d)
+
 .PHONY: all
 all: $(TARGET).out
 
-$(TARGET).out: $(OBJECTS)
-	$(CC) $^ $(PLAT_TARGET) $(CPPFLAGS) $(CFLAGS) -o $@
+.PHONY: build
+build: all
 
-%.o : %.c
-	$(CC) -c $^ $(PLAT_TARGET) $(CPPFLAGS) $(CFLAGS) -o $@
+.PHONY: compile-all
+compile-all : $(OBJECTS)
 
 
 .PHONY: clean
 clean:
-	rm -f $(OBJECTS)
+	rm -f $(OBJECTS) $(SOURCES_MSP:.c=.o)
 	rm -f $(SOURCES:.c=.map) $(SOURCES_MSP:.c=.map)
 	rm -f $(SOURCES:.c=.asm) $(SOURCES_MSP:.c=.asm)
 	rm -f $(SOURCES:.c=.i) $(SOURCES_MSP:.c=.i)
 	rm -f $(TARGET).out $(TARGET).map $(TARGET).asm $(TARGET).i $(TARGET).o
+	rm -f $(SOURCES:.c=.d) $(SOURCES_MSP:.c=.d) $(SOURCES:.c=.dep) $(SOURCES_MSP:.c=.dep)
+
+$(TARGET).out: $(OBJECTS)
+	$(CC) $^ $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -o $@
+
+%.o : %.c
+	$(CC) -c $^ $(CPPFLAGS) $(CFLAGS) $(INCLUDES) -o $@
+
+%.asm : %.c
+	$(CC) -S $^ $(CPPFLAGS) $(CFLAGS) $(INCLUDES) -o $@
+
+%.i : %.c
+	$(CC) -E $^ $(CPPFLAGS) $(CFLAGS) $(INCLUDES) -o $@
+
+-include $(DEPS)

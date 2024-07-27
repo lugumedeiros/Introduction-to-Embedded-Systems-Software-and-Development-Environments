@@ -13,4 +13,4 @@
 SOURCES = main.c memory.c
 SOURCES_MSP = startup_msp432p401r_gcc.c system_msp432p401r.c interrupts_msp432p401r_gcc.c
 # Add your include paths to this variable
-INCLUDES = -I../include/common/ -I../include/CMSIS/ -I../include/msp432/ -I../M2/
+INCLUDES = -I../include/common/ -I../include/CMSIS/ -I../include/msp432/ -I../M2/include/
