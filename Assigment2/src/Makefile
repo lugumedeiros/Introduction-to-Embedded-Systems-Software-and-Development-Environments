@@ -36,40 +36,51 @@ include sources.mk
 
 # Platform Overrides
 PLATFORM ?= HOST
+TARGET = c1m2
 
 # Architectures Specific Flags
 CPU = cortex-m4
-ARCH = armv7e-m
+ARCH = thumb
 SPECS = nosys.specs
-LDFLAGS = -Wl,-Map=$(TARGET).map 
+FPU = fpv4-sp-d16
+LD_MSP = arm-none-eabi-ld
+LINKER_FILE = ../msp432p401r.lds
 LDFLAGS_MSP = -T $(LINKER_FILE)
-MSP_C_FLAGS = -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mthumb
-MSP_ALL_FLAGS = $(MSP_C_FLAGS) -mcpu=$(CPU) -march=$(ARCH) --specs=$(SPECS) $(MSP_C_FLAGS)
+CFLAGS_MSP =  -mcpu=$(CPU) -m$(ARCH) --specs=$(SPECS) -march=armv7e-m -mfloat-abi=hard -mfpu=$(FPU)		
 
-# Compiler Flags and Defines
-TARGET = c1m2
-CPPFLAGS = -D$(PLATFORM)
-CFLAGS = -Wall -g -O0 -std=c99 -Werror
+
+# Compiler Flags and Defines 
+LD = ld
+CFLAGS = -Wall -Werror -g -O0 -std=c99 -D$(PLATFORM)
+CPPFLAGS = -E
+LDFLAGS = -Wl,-Map=$(TARGET).map 
+SIZE = size
+MAIN = main
+OBJDUMP = objdump
 
 ifeq ($(PLATFORM), MSP432)
 	CC = arm-none-eabi-gcc
-	LINKER_FILE = ../msp432p401r.lds
-	CFLAGS += $(MSP_ALL_FLAGS)
-	LDFLAGS = $(LDFLAGS_MSP)
+	CFLAGS += $(CFLAGS_MSP)
+	LD = $(LD_MSP)
+	LDFLAGS += $(LDFLAGS_MSP)
 	SOURCES += $(SOURCES_MSP)
-	OBJECTS += $(SOURCES_MSP:.c=.o)
+	OBJDUMP = arm-none-eabi-objdump
+	SIZE = arm-none-eabi-size 
 else
 	CC = gcc
 endif
 
 OBJECTS = $(SOURCES:.c=.o)
-DEPS = $(OBJECTS:.o=.d)
+DEPS = $(SOURCES:.c=.d)
+ASMS = $(SOURCES:.c=.asm)
+PREP = $(SOURCES:.c=.i)
 
-.PHONY: all
-all: $(TARGET).out
+.PHONY: compile-all
+compile-all: $(OBJECTS)
+	$(CC) $(INCLUDES) $(OBJECTS) -c $(CFLAGS) -o $(TARGET).o
 
 .PHONY: build
-build: all
+build: $(TARGET).out $(TARGET).asm
 
 .PHONY: compile-all
 compile-all : $(OBJECTS)
@@ -77,23 +88,24 @@ compile-all : $(OBJECTS)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJECTS) $(SOURCES_MSP:.c=.o)
-	rm -f $(SOURCES:.c=.map) $(SOURCES_MSP:.c=.map)
-	rm -f $(SOURCES:.c=.asm) $(SOURCES_MSP:.c=.asm)
-	rm -f $(SOURCES:.c=.i) $(SOURCES_MSP:.c=.i)
-	rm -f $(TARGET).out $(TARGET).map $(TARGET).asm $(TARGET).i $(TARGET).o
-	rm -f $(SOURCES:.c=.d) $(SOURCES_MSP:.c=.d) $(SOURCES:.c=.dep) $(SOURCES_MSP:.c=.dep)
+	rm -f $(TARGET).asm *.asm *.i *.o *.d $(TARGET).out $(TARGET).map $(PREP) $(ASMS) $(DEPS) $(OBJECTS)
 
 $(TARGET).out: $(OBJECTS)
-	$(CC) $^ $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -o $@ $(OBJECTS)
+	$(SIZE) -Atd $(TARGET).out
+	$(SIZE) $(TARGET).out
 
 %.o : %.c
-	$(CC) -c $^ $(CPPFLAGS) $(CFLAGS) $(INCLUDES) -o $@
+	$(CC) $(INCLUDES) -c $< $(CFLAGS) -o $@
 
 %.asm : %.c
-	$(CC) -S $^ $(CPPFLAGS) $(CFLAGS) $(INCLUDES) -o $@
+	$(CC) $(INCLUDES) -S $< $(CFLAGS) -o $@
+
+$(TARGET).asm : $(TARGET).out
+	$(OBJDUMP) -d $(TARGET).out >> $@
 
 %.i : %.c
-	$(CC) -E $^ $(CPPFLAGS) $(CFLAGS) $(INCLUDES) -o $@
+	$(CC) $(INCLUDES) $(CPPFLAGS) $< $(CFLAGS) -o $@
 
--include $(DEPS)
+%.d : %.c
+	$(CC) $(INCLUDES) -M $< $(CFLAGS) -o $@
