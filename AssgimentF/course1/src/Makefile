@@ -51,7 +51,7 @@ CFLAGS_MSP =  -mcpu=$(CPU) -m$(ARCH) --specs=$(SPECS) -march=armv7e-m -mfloat-ab
 
 # Compiler Flags and Defines 
 LD = ld
-CFLAGS = -Wall -Werror -g -O0 -std=c99 -D$(PLATFORM)
+CFLAGS = -Wall -Werror -g -O0 -std=c99 -D$(PLATFORM) -DCOURSE1 -DVERBOSE
 CPPFLAGS = -E
 LDFLAGS = -Wl,-Map=$(TARGET).map 
 SIZE = size

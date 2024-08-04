@@ -48,3 +48,91 @@ void clear_all(char * ptr, unsigned int size){
   set_all(ptr, 0, size);
 }
 
+uint8_t * my_memmove(uint8_t * src, uint8_t * dst, size_t length) {
+/*This function will move a block of size <lenght> from src to dst addresses
+  src has the address of the first item to be moved and dst has the address 
+  of the first item that will be moved if fronwarded. */
+  
+  
+  uint8_t* dstcopy = dst;
+
+  if (dst < src || dst >= src + length) {
+    while (length--){
+      *dst++ = *src++;
+    }
+  } 
+
+  else {
+    src += length;
+    dst += length;
+    while(length--){
+      *(--dst) = *(--src);
+    }
+  }
+  return dstcopy;
+}
+
+uint8_t *my_memcopy(uint8_t* src, uint8_t* dst, size_t length) {
+/*This funciton does the same as my_memmove (move a block of data), but it will
+  not test if it's a safe operation, forward movement always*/
+  
+  uint8_t* dstcopy = dst;
+  //frontward memory movement
+    while (length--){
+      *dst++ = *src++;
+  }
+  return dstcopy;
+}
+
+uint8_t * my_memset(uint8_t * src, size_t length, uint8_t value) {
+//this function will set all values inside the selected memory to <value>
+
+  uint8_t* srctemp = src;
+  while(length--) {
+    *src++ = value;
+  }
+  //src = srctemp;
+  return srctemp;
+}
+
+uint8_t * my_memzero(uint8_t * src, size_t length) {
+  /* This function will use memset as base to set all values to zero,
+    the return of this fucntion is the start of the same*/
+  
+  size_t set_zero = 0;
+  uint8_t* ptr = my_memset(src, length, set_zero);
+  return ptr;
+}
+
+uint8_t * my_reverse(uint8_t * src, size_t length) {
+  /* This function reverses all values inside of the selected memory, even or 
+    odd. This is achieved by swapping from outer pairs to the inner one */
+  
+  uint8_t* start = src;
+  uint8_t* end = src + length - 1;
+  uint8_t temp;
+
+  while (start < end) {
+    //swapping
+    temp = *start;
+    *start = *end;
+    *end = temp;
+
+    //pointer movement
+    ++start;
+    --end;
+  }
+  return src;
+}
+
+int32_t * reserve_words(size_t length) {
+/* Creates a malloc of length size */
+
+  int32_t* ptr = malloc(length * sizeof(length));
+  return ptr;
+}
+
+void free_words(uint32_t * src){
+/* Frees a malloc */
+  free (src);
+}
